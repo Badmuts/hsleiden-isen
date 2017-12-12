@@ -3,11 +3,22 @@ version: '3'
 services:
   node-red:
     image: nodered/node-red-docker
-    ports:
-      - "1880:1880"
+    restart: unless-stopped
+    expose:
+      - "1880"
+    networks:
+      - web
+      - default
+    labels:
+      - "traefik.backend=isen-node-red"
+      - "traefik.docker.network=web"
+      - "traefik.frontend.rule=Host:node-red.isen.daan.codes"
+      - "traefik.enable=true"
+      - "traefik.port=1880"
   
   db:
     image: influxdb:1.4-alpine
+    restart: unless-stopped
     environment:
       - INFLUXDB_ADMIN_ENABLED=true
       - INFLUXDB_ADMIN_USER=admin 
@@ -15,10 +26,33 @@ services:
       - INFLUXDB_DB=ttndb
       - INFLUXDB_USER=isen
       - INFLUXDB_USER_PASSWORD=Welkom#1
-    ports:
-      - "8086:8086"
+    networks:
+      - web
+      - default
+    expose:
+      - "8086"
+    labels:
+      - "traefik.backend=isen-db"
+      - "traefik.docker.network=web"
+      - "traefik.frontend.rule=Host:db.isen.daan.codes"
+      - "traefik.enable=true"
+      - "traefik.port=8086"
   
   dashboard:
     image: grafana/grafana
-    ports:
-      - "4000:3000"
+    restart: unless-stopped
+    networks:
+      - web
+      - default
+    expose:
+      - "3000"
+    labels:
+      - "traefik.backend=isen-dashboard"
+      - "traefik.docker.network=web"
+      - "traefik.frontend.rule=Host:dashboard.isen.daan.codes"
+      - "traefik.enable=true"
+      - "traefik.port=3000"
+
+networks:
+  web:
+    external: true
