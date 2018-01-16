@@ -4,22 +4,10 @@ import sys
 import RPi.GPIO as GPIO
 import time
 import serial
-import decimal
 import struct
 
-loopcount = 0
-# Set serial connection
-arduinoSerialData = serial.Serial('/dev/ttyACM0', 9600)
-
-
-#------------------------------
-# Set up PubNub
-# Put in Pub/Sub (Use your own keys!)
-# Define your PubNub channel
-#------------------------------
-channel = 'Rangefinder'
-
-# Interacting with the hardware:
+port = '/dev/ttyACM0'
+arduino = serial.Serial(port, 9600)
 
 GPIO.setmode(GPIO.BCM)
 
@@ -27,7 +15,6 @@ GPIO.setmode(GPIO.BCM)
 
 TRIG = 20
 ECHO = 26
-toSend = ''
 # Connect the libraries to your GPIO pins
 print("Distance Measurement in Progess")
 GPIO.setup(TRIG,GPIO.OUT)
@@ -37,8 +24,10 @@ GPIO.setup(ECHO,GPIO.IN)
 GPIO.output(TRIG,False)
 time.sleep(2)
 
-# Send a pulse for 10 microseconds.
 
+oldtime = time.time()
+
+# Send a pulse for 10 microseconds.
 while True:
     GPIO.output(TRIG, True)
     time.sleep(0.00001)
@@ -65,25 +54,21 @@ while True:
 
     # Round out distance for simplicity and print.
     distance = round(distance, 2)
-    loopcount+=1
     
     # Publish the measured distance to PubNub
 
     print("Distance:",distance,"cm")
-    print('loopcount:', loopcount)
-    if(loopcount == 13):
-        print('distance to send: ', int(distance))
-        toSend = int(distance)
-        print('int to send: ', toSend)
-        break
+
+
+    # check
+    if time.time() - oldtime > 15:
+        oldtime = time.time()
+        print "it's been a minute"
+        arduino.write("3600 3200;2200 2100")
     
     print("Proximity Detected")
     time.sleep(1)
 
-
-print('Sending data....')
-result = arduinoSerialData.write(struct.pack('>B', toSend))
-print('result: ', result)
 # Clean up GPIO pins + reset
 GPIO.cleanup()
 sys.exit()
