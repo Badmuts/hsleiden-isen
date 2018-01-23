@@ -7,7 +7,7 @@ import serial
 import struct
 
 port = '/dev/ttyACM0'
-# arduino = serial.Serial(port, 9600)
+arduino = serial.Serial(port, 9600)
 
 GPIO.setmode(GPIO.BCM)
 
@@ -18,6 +18,9 @@ ECHOONE = 26
 # rangefinder 2
 TRIGTWO = 12
 ECHOTWO = 6
+
+# Switch contact
+SWITCH = 5
 # Connect the libraries to your GPIO pins
 print("Distance Measurement in Progess")
 GPIO.setup(TRIGONE, GPIO.OUT)
@@ -25,11 +28,17 @@ GPIO.setup(ECHOONE, GPIO.IN)
 GPIO.setup(TRIGTWO, GPIO.OUT)
 GPIO.setup(ECHOTWO, GPIO.IN)
 
+GPIO.setup(SWITCH, GPIO.IN)
+
 # Settle the trigger and wait
 GPIO.output(TRIGONE, False)
 GPIO.output(TRIGTWO, False)
 time.sleep(2)
 
+bridgeOpenings = []
+switchClosed = None
+switchOpen = None
+bridgeOpen = False
 waitTime = 15
 oldtime = time.time()
 sensor1Active = False
@@ -47,10 +56,13 @@ boatspassed = []
 
 standard_distance1 = 0
 standard_distance2 = 0
+
+
 for x in range(0, 3):
     GPIO.output(TRIGONE, True)
     time.sleep(0.00001)
     GPIO.output(TRIGONE, False)
+
 
     pulse_one_start = time.time()
     while GPIO.input(ECHOONE)==0:
@@ -152,6 +164,17 @@ while True:
         sensor2TimeEnd = None
         bothactive = False
 
+    if GPIO.input(SWITCH):
+        if bridgeOpen == True:
+            bridgeOpen = False
+            switchClosed = time.time()
+            bridgeOpenings.append(waitTime - switchOpen + oldtime)
+            bridgeOpenings.append(waitTime - switchClosed + oldtime)
+
+    else:
+        if(bridgeOpen == False):
+            switchOpen = time.time()
+            bridgeOpen = True
 
     # check
     if time.time() - oldtime > waitTime:
@@ -163,14 +186,21 @@ while True:
                 passingString += str(p) + " "
             passingString = passingString[:-1]
             passingString += ';'
-            
-            print(passingString)
-
         del boatspassed[:]
+        if(len(bridgeOpenings) > 1):
+            if(len(passingString)<1):
+                passingString += ';'
+            for p in bridgeOpenings:
+                p = int(p)
+                passingString += str(p) + " "
+            passingString = passingString[:-1]
+        del bridgeOpenings[:]       
         oldtime = time.time()
-        # arduino.write("3600 3200;2200 2100")
+        result = arduino.write(passingString)
+        print("result: ", result)
+        print(passingString)
     time.sleep(1)
-
+ 
 # Clean up GPIO pins + reset
 GPIO.cleanup()
 sys.exit()
