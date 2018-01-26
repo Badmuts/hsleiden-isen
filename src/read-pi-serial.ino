@@ -36,15 +36,15 @@
  // LoRaWAN NwkSKey, network session key
  // This is the default Semtech key, which is used by the early prototype TTN
  // network.
- static const PROGMEM u1_t NWKSKEY[16] = { 0x3D, 0x1D, 0xC6, 0x5D, 0xF4, 0xEB, 0x5A, 0x93, 0x67, 0x32, 0x01, 0xC2, 0x39, 0x8A, 0x90, 0x6C };
+ static const PROGMEM u1_t NWKSKEY[16] = { 0x0C, 0xEA, 0x2E, 0x97, 0xE4, 0x87, 0x8D, 0xCA, 0xAE, 0xC6, 0x02, 0xFF, 0xD8, 0xCD, 0x41, 0x0A };
  
  // LoRaWAN AppSKey, application session key
  // This is the default Semtech key, which is used by the early prototype TTN
  // network.
- static const u1_t PROGMEM APPSKEY[16] = { 0xCD, 0x64, 0xD4, 0x45, 0x8F, 0xAD, 0xB8, 0xA8, 0x14, 0x1A, 0x25, 0xA2, 0x89, 0x6A, 0x1C, 0x6B };
+ static const u1_t PROGMEM APPSKEY[16] = { 0xCC, 0x6C, 0xFC, 0xE7, 0xC3, 0x2A, 0xAA, 0xEC, 0x98, 0x9F, 0x74, 0x3A, 0xF7, 0x79, 0x1E, 0xC0 };
  
  // LoRaWAN end-device address (DevAddr)
- static const u4_t DEVADDR = 0x26011342 ; // <-- Change this address for every node!
+ static const u4_t DEVADDR = 0x26011EB5 ; // <-- Change this address for every node!
  
  
  // These callbacks are only used in over-the-air activation, so they are
@@ -53,9 +53,11 @@
  void os_getArtEui (u1_t* buf) { }
  void os_getDevEui (u1_t* buf) { }
  void os_getDevKey (u1_t* buf) { }
- static uint8_t mydata[] = "3600 3200;2100 2300";
  static osjob_t sendjob;
+ static uint8_t mydata[100];
  char str[4];
+ String content = "";
+ char character;
  
  // Schedule TX every this many seconds (might become longer due to duty
  // cycle limitations).
@@ -141,6 +143,7 @@
      if (LMIC.opmode & OP_TXRXPEND) {
          Serial.println(F("OP_TXRXPEND, not sending"));
      } else {
+         Serial.println((char*) mydata);
          // Prepare upstream data transmission at the next possible time.
          LMIC_setTxData2(1, mydata, sizeof(mydata)-1, 0);
          Serial.println(F("Packet queued"));
@@ -222,27 +225,29 @@
      // Set data rate and transmit power for uplink (note: txpow seems to be ignored by the library)
      LMIC_setDrTxpow(DR_SF7,14);
  
-     // Start job
      do_send(&sendjob);
+ 
  }
  
  void loop() {
    delay(1000);
    os_runloop_once();
  
-   String content = "";
-   if(Serial.available()){
-     while(Serial.available()) {
-       Serial.println(Serial.readString());
-       content += Serial.readString();
-       
+   int i =0;
+   int incomingByte = 0;
+   while(Serial.available()){
+     incomingByte = Serial.read();
+      mydata[i] = incomingByte;
+      i++;
      }
-   }
    
-   if(content.length() > 6) {
-     Serial.println("content: ");
-     Serial.println(content);
-     delay(1000);
+   if(i > 0) {
+     do_send(&sendjob);
+     for(int i = 0; i < sizeof(mydata); ++i) {
+       mydata[i] = (char)0;
+     }
+     
    }
+   i = 0;
  }
  
